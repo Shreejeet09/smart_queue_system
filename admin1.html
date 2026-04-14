@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Admin - Queue System</title>
+</head>
+<body>
+
+  <h2>Admin Panel</h2>
+
+  <button onclick="nextToken()">Next</button>
+  <h3 id="currentToken">Current Token: None</h3>
+
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "smartqueuesystem-47b99.firebaseapp.com",
+      databaseURL: "https://smartqueuesystem-47b99-default-rtdb.firebaseio.com/",
+      projectId: "smartqueuesystem-47b99"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    function nextToken() {
+      db.ref("queue").once("value", snapshot => {
+        let data = snapshot.val();
+
+        if (data) {
+          let keys = Object.keys(data);
+
+          // Sort keys to maintain order
+          keys.sort();
+
+          let firstKey = keys[0];
+          let current = data[firstKey];
+
+          db.ref("currentToken").set(current);
+          db.ref("queue/" + firstKey).remove();
+
+          document.getElementById("currentToken").innerText =
+            "Current Token: " + current;
+        } else {
+          alert("No tokens in queue");
+        }
+      });
+    }
+  </script>
+
+</body>
+</html>
