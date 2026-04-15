@@ -10,11 +10,14 @@
   <button onclick="generateToken()">Get Token</button>
   <button onclick="resetToken()">Reset</button>
   <h3 id="tokenDisplay"></h3>
+  <h3 id="currentToken">Current Token: None</h3>
+  <h3 id="position">Your Position: --</h3>
 
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 
   <script>
+
     const firebaseConfig = {
       apiKey: "YOUR_API_KEY",
       authDomain: "smartqueuesystem-47b99.firebaseapp.com",
@@ -44,19 +47,86 @@
           let newToken = "A" + tokenNumber;
 
           db.ref("queue").push(newToken);
-
           localStorage.setItem("myToken", newToken);
 
           document.getElementById("tokenDisplay").innerText =
             "Your Token: " + newToken;
+
+          // Instant update
+          setTimeout(() => {
+            db.ref("queue").once("value", snapshot => {
+              let data = snapshot.val();
+              if (!data) return;
+
+              let tokens = Object.values(data);
+              let position = tokens.indexOf(newToken);
+
+              if (position !== -1) {
+                let waitTime = (position + 1) * 2;
+
+                document.getElementById("position").innerText =
+                  "Your Position: " + (position + 1) +
+                  " | Estimated Wait: " + waitTime + " mins";
+              }
+            });
+          }, 500);
         }
       });
-     
     }
-	function resetToken() {
-  localStorage.removeItem("myToken");
-  document.getElementById("tokenDisplay").innerText = "Token Reset. You can take new token.";
-  }
+
+    function resetToken() {
+      localStorage.removeItem("myToken");
+      document.getElementById("tokenDisplay").innerText =
+        "Token Reset. You can take new token.";
+    }
+
+    db.ref("currentToken").on("value", snapshot => {
+      let current = snapshot.val() || "None";
+
+      document.getElementById("currentToken").innerText =
+        "Current Token: " + current;
+    });
+
+    db.ref("queue").on("value", snapshot => {
+      let data = snapshot.val();
+      let myToken = localStorage.getItem("myToken");
+
+      if (!myToken) {
+        document.getElementById("position").innerText =
+          "Your Position: --";
+        return;
+      }
+
+      if (!data) {
+        document.getElementById("position").innerText =
+          "Your turn is completed";
+        return;
+      }
+
+      let tokens = Object.values(data);
+      let position = tokens.indexOf(myToken);
+
+      if (position === -1) {
+        db.ref("currentToken").once("value", snap => {
+          let current = snap.val();
+
+          if (current === myToken) {
+            document.getElementById("position").innerText =
+              "Your Position: 1 | Estimated Wait: 2 mins";
+          } else {
+            document.getElementById("position").innerText =
+              "Updating...";
+          }
+        });
+      } else {
+        let waitTime = (position + 1) * 2;
+
+        document.getElementById("position").innerText =
+          "Your Position: " + (position + 1) +
+          " | Estimated Wait: " + waitTime + " mins";
+      }
+    });
+
   </script>
 
 </body>
