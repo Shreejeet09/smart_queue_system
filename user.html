@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>User - Queue System</title>
+</head>
+<body>
+
+  <h2>User Panel</h2>
+
+  <button onclick="generateToken()">Get Token</button>
+  <button onclick="resetToken()">Reset</button>
+  <h3 id="tokenDisplay"></h3>
+
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "smartqueuesystem-47b99.firebaseapp.com",
+      databaseURL: "https://smartqueuesystem-47b99-default-rtdb.firebaseio.com/",
+      projectId: "smartqueuesystem-47b99"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    function generateToken() {
+      let existingToken = localStorage.getItem("myToken");
+
+      if (existingToken) {
+        document.getElementById("tokenDisplay").innerText =
+          "You already have Token: " + existingToken;
+        return;
+      }
+
+      let tokenRef = db.ref("tokenNumber");
+
+      tokenRef.transaction(function(currentValue) {
+        return (currentValue || 100) + 1;
+      }, function(error, committed, snapshot) {
+        if (committed) {
+          let tokenNumber = snapshot.val();
+          let newToken = "A" + tokenNumber;
+
+          db.ref("queue").push(newToken);
+
+          localStorage.setItem("myToken", newToken);
+
+          document.getElementById("tokenDisplay").innerText =
+            "Your Token: " + newToken;
+        }
+      });
+     
+    }
+	function resetToken() {
+  localStorage.removeItem("myToken");
+  document.getElementById("tokenDisplay").innerText = "Token Reset. You can take new token.";
+  }
+  </script>
+
+</body>
+</html>
