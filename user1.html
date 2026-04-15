@@ -1,23 +1,81 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>User - Queue System</title>
+  <title>Smart Queue System</title>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #4facfe, #00f2fe);
+      margin: 0;
+      padding: 0;
+      text-align: center;
+      color: #333;
+    }
+
+    .container {
+      background: white;
+      width: 350px;
+      margin: 80px auto;
+      padding: 30px;
+      border-radius: 15px;
+      box-shadow: 0px 10px 25px rgba(0,0,0,0.2);
+    }
+
+    h2 {
+      margin-bottom: 20px;
+    }
+
+    button {
+      background: #4facfe;
+      color: white;
+      border: none;
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+
+    button:hover {
+      background: #007bff;
+    }
+
+    .info {
+      margin-top: 20px;
+      font-size: 18px;
+    }
+
+    .token {
+      font-size: 22px;
+      font-weight: bold;
+      color: #007bff;
+    }
+
+    .highlight {
+      color: green;
+      font-weight: bold;
+    }
+  </style>
 </head>
+
 <body>
 
-  <h2>User Panel</h2>
+  <div class="container">
+    <h2>Smart Queue System</h2>
 
-  <button onclick="generateToken()">Get Token</button>
-  <button onclick="resetToken()">Reset</button>
-  <h3 id="tokenDisplay"></h3>
-  <h3 id="currentToken">Current Token: None</h3>
-  <h3 id="position">Your Position: --</h3>
+    <button onclick="generateToken()">Get Token</button>
 
+    <div class="info token" id="tokenDisplay"></div>
+    <div class="info" id="currentToken">Current Token: None</div>
+    <div class="info" id="position">Your Position: --</div>
+  </div>
+
+  <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 
   <script>
-
     const firebaseConfig = {
       apiKey: "YOUR_API_KEY",
       authDomain: "smartqueuesystem-47b99.firebaseapp.com",
@@ -51,35 +109,11 @@
 
           document.getElementById("tokenDisplay").innerText =
             "Your Token: " + newToken;
-
-          // Instant update
-          setTimeout(() => {
-            db.ref("queue").once("value", snapshot => {
-              let data = snapshot.val();
-              if (!data) return;
-
-              let tokens = Object.values(data);
-              let position = tokens.indexOf(newToken);
-
-              if (position !== -1) {
-                let waitTime = (position + 1) * 2;
-
-                document.getElementById("position").innerText =
-                  "Your Position: " + (position + 1) +
-                  " | Estimated Wait: " + waitTime + " mins";
-              }
-            });
-          }, 500);
         }
       });
     }
 
-    function resetToken() {
-      localStorage.removeItem("myToken");
-      document.getElementById("tokenDisplay").innerText =
-        "Token Reset. You can take new token.";
-    }
-
+    // Show current serving token
     db.ref("currentToken").on("value", snapshot => {
       let current = snapshot.val() || "None";
 
@@ -87,6 +121,7 @@
         "Current Token: " + current;
     });
 
+    // Main queue logic (UPDATED PROFESSIONAL LOGIC)
     db.ref("queue").on("value", snapshot => {
       let data = snapshot.val();
       let myToken = localStorage.getItem("myToken");
@@ -97,36 +132,39 @@
         return;
       }
 
-      if (!data) {
-        document.getElementById("position").innerText =
-          "Your turn is completed";
-        return;
-      }
-
-      let tokens = Object.values(data);
+      let tokens = data ? Object.values(data) : [];
       let position = tokens.indexOf(myToken);
 
-      if (position === -1) {
-        db.ref("currentToken").once("value", snap => {
-          let current = snap.val();
+      db.ref("currentToken").once("value", snap => {
+        let current = snap.val();
 
-          if (current === myToken) {
-            document.getElementById("position").innerText =
-              "Your Position: 1 | Estimated Wait: 2 mins";
-          } else {
-            document.getElementById("position").innerText =
-              "Updating...";
-          }
-        });
-      } else {
+        // CASE 1: Your turn completed
+        if (current === myToken) {
+          document.getElementById("position").innerHTML =
+            "<span class='highlight'>Please proceed to counter</span>";
+
+          // AUTO REMOVE TOKEN
+          localStorage.removeItem("myToken");
+          return;
+        }
+
+        // CASE 2: Token not in queue (already served)
+        if (position === -1) {
+          document.getElementById("position").innerText =
+            "Your turn is completed";
+
+          localStorage.removeItem("myToken");
+          return;
+        }
+
+        // CASE 3: Still waiting
         let waitTime = (position + 1) * 2;
 
         document.getElementById("position").innerText =
           "Your Position: " + (position + 1) +
           " | Estimated Wait: " + waitTime + " mins";
-      }
+      });
     });
-
   </script>
 
 </body>
